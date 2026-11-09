@@ -1,0 +1,57 @@
+# Replace every <...> value before applying. This is ACA Jobs YAML, not Kubernetes YAML.
+name: <JOB_NAME>
+type: Microsoft.App/jobs
+location: eastus
+identity:
+  type: UserAssigned
+  userAssignedIdentities:
+    <RUNNER_IDENTITY_RESOURCE_ID>: {}
+properties:
+  environmentId: <EXISTING_RUNNER_ACA_ENVIRONMENT_ID>
+  configuration:
+    triggerType: Event
+    replicaTimeout: 3600
+    replicaRetryLimit: 0
+    eventTriggerConfig:
+      parallelism: 1
+      replicaCompletionCount: 1
+      scale:
+        minExecutions: 0
+        maxExecutions: 15
+        pollingInterval: 30
+        rules:
+          - name: github-queue
+            type: github-runner
+            metadata:
+              owner: <GITHUB_OWNER>
+              repos: <GITHUB_REPOSITORY_NAME>
+              runnerScope: repo
+              labels: <RUNNER_LABEL>
+              noDefaultLabels: "true"
+              targetWorkflowQueueLength: "1"
+            auth:
+              - secretRef: github-auth
+                triggerParameter: personalAccessToken
+    registries:
+      - server: <ACR_LOGIN_SERVER>
+        identity: <RUNNER_IDENTITY_RESOURCE_ID>
+    secrets:
+      - name: github-auth
+        keyVaultUrl: <VERSIONED_KEY_VAULT_SECRET_URI>
+        identity: <RUNNER_IDENTITY_RESOURCE_ID>
+  template:
+    containers:
+      - name: runner
+        image: <ACR_LOGIN_SERVER>/ci/runner@sha256:<RUNNER_IMAGE_DIGEST>
+        resources:
+          cpu: 1
+          memory: 2Gi
+        env:
+          - name: GH_OWNER
+            value: <GITHUB_OWNER>
+          - name: GH_REPO
+            value: <GITHUB_REPOSITORY_NAME>
+          - name: RUNNER_LABEL
+            value: <RUNNER_LABEL>
+          - name: GH_RUNNER_TOKEN
+            secretRef: github-auth

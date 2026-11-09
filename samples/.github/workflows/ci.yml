@@ -1,0 +1,21 @@
+name: Unprivileged pull request checks
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Test hello world
+        run: python3 -m unittest discover -s app -v
+      - name: Verify container builds, without Azure access
+        run: docker build --build-arg APP_COMMIT="$GITHUB_SHA" -t hello:pr .

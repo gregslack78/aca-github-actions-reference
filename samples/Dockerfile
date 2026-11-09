@@ -1,0 +1,10 @@
+FROM python:3.12-slim-bookworm
+ARG APP_COMMIT=local
+ENV APP_COMMIT=${APP_COMMIT} \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY --chown=10001:10001 app/server.py .
+USER 10001:10001
+EXPOSE 8080
+CMD ["python", "server.py"]

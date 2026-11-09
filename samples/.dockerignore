@@ -1,0 +1,7 @@
+.git
+.github
+scripts
+**/__pycache__
+**/*.pem
+**/.env
+**/.env.*

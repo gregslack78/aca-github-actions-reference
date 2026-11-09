@@ -1,0 +1,36 @@
+name: Inspect OIDC trust subjects
+on:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  claims:
+    strategy:
+      matrix:
+        environment: [build, production]
+    environment: ${{ matrix.environment }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      id-token: write
+    steps:
+      - name: Print only trust metadata, never the token
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'JS'
+          (async () => {
+            const url = new URL(process.env.ACTIONS_ID_TOKEN_REQUEST_URL);
+            url.searchParams.set('audience', 'api://AzureADTokenExchange');
+            const result = await fetch(url, {
+              headers: { Authorization: `Bearer ${process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN}` }
+            });
+            if (!result.ok) throw new Error(`OIDC request failed: ${result.status}`);
+            const { value } = await result.json();
+            const claims = JSON.parse(Buffer.from(value.split('.')[1], 'base64url'));
+            console.log(JSON.stringify({
+              iss: claims.iss, aud: claims.aud, sub: claims.sub,
+              repository_id: claims.repository_id,
+              repository_owner_id: claims.repository_owner_id
+            }, null, 2));
+          })().catch(error => { console.error(error.message); process.exit(1); });
+          JS

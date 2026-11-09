@@ -1,0 +1,105 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="Private ACA delivery" id="aca-reference">
+    <mxGraphModel dx="1500" dy="880" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="1500" pageHeight="880">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="github" value="&lt;b&gt;GITHUB | private repository&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eef2ff;strokeColor=#6366f1;fontSize=14;align=left;verticalAlign=top;spacing=14;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="20" y="100" width="440" height="510" as="geometry" />
+        </mxCell>
+        <mxCell id="vnet" value="&lt;b&gt;AZURE | customer-owned private network&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0f9ff;strokeColor=#0284c7;fontSize=14;align=left;verticalAlign=top;spacing=14;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="285" width="940" height="505" as="geometry" />
+        </mxCell>
+        <mxCell id="runners" value="&lt;b&gt;RUNNERS | choose option A or B&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=14;align=left;verticalAlign=top;spacing=14;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="520" y="335" width="540" height="245" as="geometry" />
+        </mxCell>
+        <mxCell id="repo" value="&lt;b&gt;1  Repository&lt;/b&gt;&lt;br&gt;&lt;br&gt;App team&amp;#x27;s repo: app code + pipeline files&lt;br&gt;Recommended: protect main with a ruleset&lt;br&gt;Recommended: CODEOWNERS on pipeline files" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6366f1;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="45" y="150" width="390" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="workflows" value="&lt;b&gt;2  Workflows + environments&lt;/b&gt;&lt;br&gt;&lt;br&gt;build environment: main only, publishes image&lt;br&gt;production environment: main only + approval&lt;br&gt;Each job gets a short-lived OIDC token&lt;br&gt;Token subject = repository + environment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6366f1;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="45" y="300" width="390" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="pr" value="&lt;b&gt;3  Pull request checks&lt;/b&gt;&lt;br&gt;&lt;br&gt;GitHub-hosted runner, read-only token&lt;br&gt;No Azure identity, no private network" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6366f1;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="45" y="480" width="390" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="platform" value="&lt;b&gt;Platform team provides&lt;/b&gt;&lt;br&gt;&lt;br&gt;Existing ACR, ACA, VNets, DNS and egress&lt;br&gt;Bootstraps Entra apps, RBAC and runners" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#475569;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="20" y="640" width="440" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="entra" value="&lt;b&gt;4  Microsoft Entra ID&lt;/b&gt;&lt;br&gt;&lt;br&gt;Two app registrations: build and deploy&lt;br&gt;One federated credential per environment&lt;br&gt;Trusts issuer + audience + exact subject&lt;br&gt;No client secret stored in GitHub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="520" y="100" width="430" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="rbac" value="&lt;b&gt;5  Azure RBAC&lt;/b&gt;&lt;br&gt;&lt;br&gt;Build identity: push images to ACR&lt;br&gt;Deploy identity: update the one ACA app&lt;br&gt;No subscription-wide roles&lt;br&gt;Sign-in and ARM use public HTTPS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f3ff;strokeColor=#7c3aed;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="990" y="100" width="430" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="vmss" value="&lt;b&gt;6A  VMSS runners&lt;/b&gt;&lt;br&gt;&lt;br&gt;15 build + 2 deploy VMs&lt;br&gt;Docker on build VMs only&lt;br&gt;Persistent; trusted code&lt;br&gt;Fixed or scheduled capacity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#2563eb;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="540" y="385" width="240" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="jobs" value="&lt;b&gt;6B  ACA Jobs runners&lt;/b&gt;&lt;br&gt;&lt;br&gt;One ephemeral job per runner&lt;br&gt;KEDA scales 0-15 / 0-2&lt;br&gt;No Docker; builds go to 8&lt;br&gt;PAT in Key Vault (bootstrap)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="800" y="385" width="240" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="acr" value="&lt;b&gt;7  Existing ACR (private)&lt;/b&gt;&lt;br&gt;&lt;br&gt;Private endpoint; public off&lt;br&gt;Images referenced by digest&lt;br&gt;App pull identity: pull only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="335" width="290" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="tasks" value="&lt;b&gt;8  ACR Tasks pool (B)&lt;/b&gt;&lt;br&gt;&lt;br&gt;VNet-connected; preview feature&lt;br&gt;Runs Docker builds for option B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#ea580c;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="500" width="290" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="aca" value="&lt;b&gt;9  Existing ACA (private)&lt;/b&gt;&lt;br&gt;&lt;br&gt;Internal environment&lt;br&gt;Stage new revision, no traffic&lt;br&gt;Private smoke test, then promote&lt;br&gt;Old revision kept for rollback" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ecfdf5;strokeColor=#059669;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="625" width="290" height="155" as="geometry" />
+        </mxCell>
+        <mxCell id="dns" value="&lt;b&gt;10  Private DNS + controlled egress&lt;/b&gt;&lt;br&gt;&lt;br&gt;ACR, Key Vault and ACA names resolve privately&lt;br&gt;Outbound HTTPS: GitHub, Entra, ARM, packages" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#64748b;fontSize=14;align=left;verticalAlign=top;spacing=14;" vertex="1" parent="1">
+          <mxGeometry x="520" y="610" width="540" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="oidc" value="OIDC trust" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7c3aed;fontSize=12;endArrow=block;" edge="1" parent="1" source="workflows" target="entra">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="480" y="375" />
+              <mxPoint x="480" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rbacedge" value="RBAC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7c3aed;fontSize=12;endArrow=block;" edge="1" parent="1" source="entra" target="rbac">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="queue" value="outbound poll" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#64748b;fontSize=12;endArrow=block;dashed=1;" edge="1" parent="1" source="workflows" target="runners">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="push" value="push image" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#2563eb;fontSize=12;endArrow=block;" edge="1" parent="1" source="runners" target="acr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="remote" value="B: build" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#ea580c;fontSize=12;endArrow=block;dashed=1;" edge="1" parent="1" source="runners" target="tasks">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="taskpush" value="push" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#ea580c;fontSize=12;endArrow=block;dashed=1;" edge="1" parent="1" source="tasks" target="acr">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="pull" value="managed identity pull" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#059669;fontSize=12;endArrow=block;" edge="1" parent="1" source="acr" target="aca">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1460" y="400" />
+              <mxPoint x="1460" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="deploy" value="deploy + smoke test" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#7c3aed;fontSize=12;endArrow=block;" edge="1" parent="1" source="runners" target="aca">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1095" y="565" />
+              <mxPoint x="1095" y="700" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
