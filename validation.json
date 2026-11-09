@@ -58,9 +58,7 @@
         "vmss_24x7": 1067.26,
         "vmss_business_hours": 321.64,
         "aca_runners_before_grant": 118.8,
-        "aca_deploy_only": 10.8,
-        "remote_builder_24x7_proxy_not_quote": 7884.0,
-        "remote_builder_business_proxy_not_quote": 2376.0
+        "aca_deploy_only": 10.8
       }
     },
     {
@@ -115,6 +113,6 @@
     "GitHub protection rules, real runner scaling, deployment and rollback",
     "ACA Job template acceptance in a live subscription",
     "Docker image build: local Docker Linux daemon unavailable",
-    "Dedicated ACR Tasks pool contract price: generic task rate used only as labeled planning proxy"
+    "Dedicated ACR Tasks agent pool pricing: no figure is given in the guide"
   ]
 }

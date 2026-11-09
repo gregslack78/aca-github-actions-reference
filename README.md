@@ -87,9 +87,10 @@ Illustrative East US pay-as-you-go list prices, 200 builds/day at about 10 minut
 | A: 15 build + 2 deploy VMs (D2as v5), online 24x7 | **~$1,070** |
 | A: same VMs, deallocated outside 220 business hours | **~$320** |
 | B: ACA Jobs runner containers only | **~$120** |
-| B: 15-node ACR Tasks agent pool | **Not quoted.** Preview pricing differs; a placeholder proxy gives $2,400 to $7,900. Get a real quote |
 | Hybrid: VMSS builds + ACA Jobs deploy | VMSS build cost + ~$11 |
 
+The option B figure covers the runner containers only. It **excludes the ACR Tasks dedicated agent pool**, which is a preview feature billed for allocated capacity
+whether or not it is building, and 15 agents run continuously unless you scale the pool down. No price is given here; get a quote for the pool before comparing option B with option A.
 Option B's runner containers are cheap, but the always-allocated build pool is not. Add OS disks, NAT/egress, private endpoints, logging, and any new shared network services.
 Confirm what "200 executions" means (builds, jobs, or workflows with fan-out) before sizing.
 
