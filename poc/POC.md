@@ -219,8 +219,12 @@ bash scripts/02-entra-and-roles.sh
 
 | Identity | Federated credential subject | Azure role |
 |---|---|---|
-| `gh-aca-poc-build` | `repo:<owner>/<repo>:environment:build` | `Reader` and `AcrPush` on the registry |
-| `gh-aca-poc-production` | `repo:<owner>/<repo>:environment:production` | `Container Apps Contributor` on the one Container App |
+| `gh-aca-poc-build` | `<sub_claim_prefix>:environment:build` | `Reader` and `AcrPush` on the registry |
+| `gh-aca-poc-production` | `<sub_claim_prefix>:environment:production` | `Container Apps Contributor` on the one Container App |
+
+The script obtains `sub_claim_prefix` from GitHub's OIDC policy API, including immutable owner/repository IDs when enabled.
+It refuses to guess missing or custom policy. An existing credential with different claims still requires an explicitly
+reviewed update; the script does not silently change trust.
 
 There is **no client secret**: an attacker who copies the client ID gets nothing, because Entra only accepts a token that GitHub signs for that exact repository and environment.
 **Expected:** the two client IDs. Role assignments can take a few minutes to take effect.

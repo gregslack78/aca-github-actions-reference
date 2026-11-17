@@ -254,18 +254,28 @@ Set every variable in the tables, not only these examples. The two client IDs co
 ## 5. Step 2: Decide the OIDC subjects
 
 Entra issues a token only when the GitHub token's `iss`, `aud`, and **exact `sub`** match a federated credential.
-For a job that uses an environment, the subject is normally:
+For a job that uses an environment, a repository with legacy name-only subjects uses:
 
 | Credential | Subject |
 |---|---|
 | Build | `repo:<GITHUB_OWNER>/<GITHUB_REPOSITORY_NAME>:environment:build` |
 | Production | `repo:<GITHUB_OWNER>/<GITHUB_REPOSITORY_NAME>:environment:production` |
 
-Environment names are case-sensitive. The Entra portal builds this value for you: choose scenario **GitHub Actions deploying Azure resources**,
-enter the organization, repository, entity type **Environment**, and the environment name (see [section 6.1](#61-app-registrations-and-federated-credentials)).
+Other repositories use an immutable-ID prefix such as `repo:<owner>@<owner-id>/<repository>@<repository-id>`.
+Read the repository's actual policy rather than guessing:
+
+```bash
+gh api "repos/<GITHUB_OWNER>/<GITHUB_REPOSITORY_NAME>/actions/oidc/customization/sub"
+```
+
+For `use_default=true`, use its `sub_claim_prefix` followed by `:environment:build` or `:environment:production`.
+The POC identity script reads that prefix automatically and rejects missing/custom policy rather than silently guessing.
+For a custom policy, inspect the actual claims with the helper below and configure the complete subjects manually.
+Environment names are case-sensitive. Verify any subject proposed by the Entra portal against this metadata;
+use the CLI example below when the portal proposes a legacy value.
 Never widen a subject to all branches, all environments, or the whole organization.
 
-**Only if the first Azure login fails** with `AADSTS70021` (no matching federated credential) is the subject format likely different.
+**If Azure login fails** with `AADSTS70021` or `AADSTS700213` (no matching federated credential), check the exact subject format.
 GitHub can use immutable owner and repository IDs, or the organization may use a custom subject template, and a repository rename or transfer changes the value.
 To see exactly what GitHub sends, run the optional helper:
 
@@ -312,10 +322,13 @@ DEPLOY_CLIENT_ID=$(az ad app create --display-name "gh-aca-hello-production" --q
 BUILD_SP_ID=$(az ad sp create --id "$BUILD_CLIENT_ID" --query id -o tsv)
 DEPLOY_SP_ID=$(az ad sp create --id "$DEPLOY_CLIENT_ID" --query id -o tsv)
 
-jq -n --arg sub 'repo:<GITHUB_OWNER>/<GITHUB_REPOSITORY_NAME>:environment:build' '{
+SUBJECT_PREFIX=$(gh api "repos/<GITHUB_OWNER>/<GITHUB_REPOSITORY_NAME>/actions/oidc/customization/sub" \
+  --jq 'select(.use_default == true) | .sub_claim_prefix // empty')
+[[ -n "$SUBJECT_PREFIX" ]] || { echo "Inspect custom OIDC claims before creating federation" >&2; exit 1; }
+jq -n --arg sub "${SUBJECT_PREFIX}:environment:build" '{
   name:"github-build", issuer:"https://token.actions.githubusercontent.com",
   subject:$sub, audiences:["api://AzureADTokenExchange"]}' > build-federation.json
-jq -n --arg sub 'repo:<GITHUB_OWNER>/<GITHUB_REPOSITORY_NAME>:environment:production' '{
+jq -n --arg sub "${SUBJECT_PREFIX}:environment:production" '{
   name:"github-production", issuer:"https://token.actions.githubusercontent.com",
   subject:$sub, audiences:["api://AzureADTokenExchange"]}' > production-federation.json
 az ad app federated-credential create --id "$BUILD_CLIENT_ID" --parameters build-federation.json
