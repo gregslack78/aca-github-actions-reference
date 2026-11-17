@@ -1,0 +1,10 @@
+#cloud-config
+# Installs the runner tooling at first boot using the same script the guide describes (samples/scripts/provision-vm-tools.sh).
+# It does NOT register a GitHub runner: registration needs a short-lived token and is done by poc/scripts/04-register-runners.sh.
+write_files:
+  - path: /opt/poc/provision-vm-tools.sh
+    encoding: b64
+    permissions: '0755'
+    content: "@@PROVISION_B64@@"
+runcmd:
+  - [ bash, -c, 'export HOME=/root DEBIAN_FRONTEND=noninteractive; cd /opt/poc && ./provision-vm-tools.sh @@MODE@@ > /var/log/poc-provision.log 2>&1 && touch /var/lib/poc-tools-ready || touch /var/lib/poc-tools-failed' ]

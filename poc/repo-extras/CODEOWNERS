@@ -1,0 +1,5 @@
+# Pipeline files need review from the named owner before they can change.
+# The POC script replaces @@OWNER@@ with GH_REVIEWER.
+/.github/ @@OWNER@@
+/scripts/ @@OWNER@@
+/Dockerfile @@OWNER@@

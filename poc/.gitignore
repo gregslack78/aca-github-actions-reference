@@ -1,0 +1,6 @@
+# Local POC configuration and state. Nothing here should be committed.
+poc.env
+.state/
+*.pem
+*.key
+id_*

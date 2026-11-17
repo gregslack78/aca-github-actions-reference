@@ -10,7 +10,16 @@ without storing any Azure password in GitHub.
 
 > **Scope.** The ACR, the ACA environment/app, the VNets, and DNS are supplied by your platform team. This guide lists what
 > they must provide and the few settings the pipeline depends on, but it does not create them. Commands are examples:
-> replace every `<PLACEHOLDER>` and follow your change process. Nothing in this package has been deployed to Azure.
+> replace every `<PLACEHOLDER>` and follow your change process. This package does not certify a completed live deployment.
+>
+> **Want to try it first?** [poc/POC.md](poc/POC.md) walks through a small, disposable version of this whole environment
+> (Bicep infrastructure plus scripts) so you can run a real release, approval, and rollback before planning production.
+
+> **Using this GitHub repository as the POC:** keep the guide here and deploy the app in `samples/`.
+> The root workflows in [.github/workflows](.github/workflows) use that working directory; the workflows inside
+> `samples/` remain portable examples for an application at a repository root. Azure releases stay disabled until
+> the repository variable `DEPLOYMENT_ENABLED` is exactly `true`. Follow [POC.md](poc/POC.md#5-set-up-the-poc):
+> configure identities, the approval gate and runners before enabling it. Initial pushes run hosted CI only.
 
 ## Contents
 
@@ -224,6 +233,9 @@ Never create `AZURE_CLIENT_SECRET`, `AZURE_CREDENTIALS`, or an ACR admin passwor
 |---|---|---|
 | `BUILD_RUNNER_LABELS` | `["self-hosted","linux","x64","aca-build-vmss"]` | `["self-hosted","linux","x64","aca-build-job"]` |
 | `DEPLOY_RUNNER_LABELS` | `["self-hosted","linux","x64","aca-deploy-vmss"]` | `["self-hosted","linux","x64","aca-deploy-job"]` |
+
+When deploying from this reference repository itself, `DEPLOYMENT_ENABLED=true` is an additional repository-level
+opt-in, set by POC step 5 only after setup. Leave it unset while preparing the environment.
 
 For the hybrid pattern, use the A build labels, `BUILD_MODE=vmss`, and the B deploy labels.
 
@@ -575,6 +587,15 @@ and live rollback are **not** validated and must be tested in your environment.
 ## 12. Files and sources
 
 Package layout: `README.md` (this guide), `assets/` (diagram), `samples/` (files to copy into the repository), `validation.json`.
+
+The repository also includes `poc/` (setup automation), `_authoring/` (guide source, workflow/diagram generation and regression tests),
+and `.github/` (active workflows for the app under `samples/`). To update the package, install Python 3.11+ and the
+dependencies in [_authoring/requirements.txt](_authoring/requirements.txt), then run
+`python _authoring/build_package.py` from the repository root. Bash, jq, Azure CLI with Bicep, and optionally ShellCheck/actionlint
+must be on PATH. The builder regenerates the guide and root workflows, reruns validation, and creates `aca-reference.zip`
+without local POC configuration/state. Edit this guide in [_authoring/guide.template.md](_authoring/guide.template.md);
+edit workflows in `samples/.github/workflows/` and run the builder rather than editing their generated root counterparts.
+[_authoring/extra-validation.json](_authoring/extra-validation.json) is historical evidence only and is never imported as a fresh pass.
 
 * [GitHub: OIDC in Azure](https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments/oidc-in-azure) and [OIDC claims reference](https://docs.github.com/en/actions/reference/security/oidc)
 * [GitHub: deployment environments](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)

@@ -1,0 +1,5 @@
+# Keep shell scripts on LF line endings, including on Windows checkouts.
+*.sh text eol=lf
+*.bicep text eol=lf
+*.bicepparam text eol=lf
+*.yaml text eol=lf

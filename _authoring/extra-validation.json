@@ -1,0 +1,17 @@
+[
+  {
+    "check": "GitHub Actions semantic lint",
+    "status": "pass",
+    "detail": "actionlint 1.7.12 passed all 4 workflows; downloaded Windows binary SHA-256 verified against upstream checksums. ShellCheck was not available; Bash syntax was checked separately."
+  },
+  {
+    "check": "HTTP behavior",
+    "status": "pass",
+    "detail": "Local server returned HTTP 200 and exact message/commit JSON for / and /health; unknown path returned 404. Server shut down after testing."
+  },
+  {
+    "check": "Browser diagram rendering",
+    "status": "pass",
+    "detail": "Rebuilt simplified SVG rendered in the browser and screenshot inspected; every node and heading sits inside its box, and the generator asserts text fit at build time. Subtitle, legend and rotated edge labels were checked visually."
+  }
+]

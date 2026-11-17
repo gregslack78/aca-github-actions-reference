@@ -1,10 +1,12 @@
 {
   "scope": "Local artifact validation only; not a deployed reference environment",
+  "validated_at_utc": "2026-11-17T15:30:44.208944+00:00",
+  "python_version": "3.11.9",
   "checks": [
     {
       "check": "YAML parsing",
       "status": "pass",
-      "detail": "4 GitHub workflows and 1 parameterized ACA Job template"
+      "detail": "11 YAML files, including 7 workflows"
     },
     {
       "check": "Action pins",
@@ -47,6 +49,26 @@
       "detail": "All 17 sample files are linked from the guide"
     },
     {
+      "check": "Markdown links and anchors",
+      "status": "pass",
+      "detail": "Every local link and heading anchor in the guide, POC.md and infra/README.md resolves"
+    },
+    {
+      "check": "POC Bicep",
+      "status": "pass",
+      "detail": "main.bicep and all modules compile with zero errors or analyzer warnings"
+    },
+    {
+      "check": "POC cloud-init",
+      "status": "pass",
+      "detail": "runner.yaml parses as YAML after placeholder substitution"
+    },
+    {
+      "check": "POC scripts",
+      "status": "pass",
+      "detail": "bash -n and ShellCheck (style severity) passed for 12 scripts"
+    },
+    {
       "check": "Placeholder inventory",
       "status": "pass",
       "detail": "24 named placeholders intentionally require customer values"
@@ -62,25 +84,24 @@
       }
     },
     {
-      "check": "Hello-world unit tests",
+      "check": "Application tests",
       "status": "pass",
-      "detail": "2 tests passed"
+      "detail": "5 tests passed in this build"
+    },
+    {
+      "check": "Deployment automation regressions",
+      "status": "pass",
+      "detail": "23 tests passed in this build"
     },
     {
       "check": "GitHub Actions semantic lint",
       "status": "pass",
-      "detail": "actionlint 1.7.12 passed all 4 workflows; downloaded Windows binary SHA-256 verified against upstream checksums. ShellCheck was not available; Bash syntax was checked separately."
-    },
-    {
-      "check": "HTTP behavior",
-      "status": "pass",
-      "detail": "Local server returned HTTP 200 and exact message/commit JSON for / and /health; unknown path returned 404. Server shut down after testing."
-    },
-    {
-      "check": "Browser diagram rendering",
-      "status": "pass",
-      "detail": "Rebuilt simplified SVG rendered in the browser and screenshot inspected; every node and heading sits inside its box, and the generator asserts text fit at build time. Subtitle, legend and rotated edge labels were checked visually."
+      "detail": "actionlint passed all 7 workflows"
     }
+  ],
+  "not_run": [
+    "Visual browser inspection of diagrams",
+    "Historical extra-validation.json is not imported as current evidence"
   ],
   "intentional_customer_placeholders": [
     "<ACA_APP>",
@@ -112,7 +133,7 @@
     "Azure resources, network, DNS, roles and OIDC token exchange",
     "GitHub protection rules, real runner scaling, deployment and rollback",
     "ACA Job template acceptance in a live subscription",
-    "Docker image build: local Docker Linux daemon unavailable",
+    "Docker image build (performed separately by the hosted CI workflow)",
     "Dedicated ACR Tasks agent pool pricing: no figure is given in the guide"
   ]
 }

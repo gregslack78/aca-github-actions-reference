@@ -1,0 +1,14 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /samples
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /_authoring
+    schedule:
+      interval: weekly

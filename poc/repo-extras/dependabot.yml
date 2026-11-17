@@ -1,0 +1,12 @@
+# Proposes updates to the pinned action commits and the base image as pull requests,
+# so pins do not go stale. Review each one: pins are a supply-chain control.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
