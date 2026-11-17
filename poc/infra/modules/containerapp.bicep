@@ -14,6 +14,13 @@ param registryLoginServer string
 @description('Placeholder image listening on 8080. The first pipeline release replaces it.')
 param bootstrapImage string
 
+@description('Explicit IPv4 allow rules for the optional public demo. Empty for the private app.')
+param allowedCidrs array = []
+
+@minValue(0)
+@maxValue(1)
+param minReplicas int = 1
+
 resource app 'Microsoft.App/containerApps@2025-01-01' = {
   name: appName
   location: location
@@ -30,11 +37,17 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
     configuration: {
       activeRevisionsMode: 'Multiple'
       ingress: {
-        // "external" on an internal environment: reachable from the VNet only, never from the internet.
+        // The environment determines whether external ingress is public or VNet-only.
         external: true
         targetPort: 8080
         transport: 'auto'
         allowInsecure: false
+        ipSecurityRestrictions: [for (cidr, index) in allowedCidrs: {
+          name: 'allowed-${index}'
+          action: 'Allow'
+          ipAddressRange: cidr
+          description: index == 0 ? 'Browser access' : 'Deployment runner verification'
+        }]
         traffic: [
           {
             latestRevision: true
@@ -62,7 +75,7 @@ resource app 'Microsoft.App/containerApps@2025-01-01' = {
         }
       ]
       scale: {
-        minReplicas: 1
+        minReplicas: minReplicas
         maxReplicas: 3
       }
     }

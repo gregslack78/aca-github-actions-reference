@@ -29,3 +29,23 @@ jobs:
         run: python3 -m unittest discover -s app -v
       - name: Verify container builds, without Azure access
         run: docker build --build-arg APP_COMMIT="$GITHUB_SHA" -t hello:pr .
+  demo-access-boundary:
+    if: github.ref == 'refs/heads/main' && vars.DEMO_DEPLOYMENT_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    permissions: {}
+    steps:
+      - name: Unapproved internet clients must be denied
+        working-directory: ${{ runner.temp }}
+        env:
+          DEMO_FQDN: ${{ vars.DEMO_APP_FQDN }}
+        run: |
+          set -euo pipefail
+          [[ "$DEMO_FQDN" =~ ^[a-zA-Z0-9.-]+\.azurecontainerapps\.io$ ]]
+          status=$(curl --silent --show-error --connect-timeout 10 --max-time 60 \
+            --output /dev/null --write-out '%{http_code}' "https://$DEMO_FQDN/")
+          if [[ "$status" != 403 ]]; then
+            echo "::error::Expected HTTP 403 from outside the demo allow list; received $status"
+            exit 1
+          fi
+          echo "Confirmed: an unapproved internet client receives HTTP 403"

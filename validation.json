@@ -1,6 +1,6 @@
 {
   "scope": "Local artifact validation only; not a deployed reference environment",
-  "validated_at_utc": "2026-11-17T16:49:38.668704+00:00",
+  "validated_at_utc": "2026-11-17T17:29:03.309610+00:00",
   "python_version": "3.11.9",
   "checks": [
     {
@@ -59,6 +59,11 @@
       "detail": "main.bicep and all modules compile with zero errors or analyzer warnings"
     },
     {
+      "check": "Browser demo Bicep",
+      "status": "pass",
+      "detail": "public-demo.bicep and its app module compile without analyzer warnings"
+    },
+    {
       "check": "POC cloud-init",
       "status": "pass",
       "detail": "runner.yaml parses as YAML after placeholder substitution"
@@ -66,7 +71,7 @@
     {
       "check": "POC scripts",
       "status": "pass",
-      "detail": "bash -n and ShellCheck (style severity) passed for 12 scripts"
+      "detail": "bash -n and ShellCheck (style severity) passed for 13 scripts"
     },
     {
       "check": "Placeholder inventory",
@@ -86,12 +91,12 @@
     {
       "check": "Application tests",
       "status": "pass",
-      "detail": "5 tests passed in this build"
+      "detail": "6 tests passed in this build"
     },
     {
       "check": "Deployment automation regressions",
       "status": "pass",
-      "detail": "27 tests passed in this build"
+      "detail": "35 tests passed in this build"
     },
     {
       "check": "GitHub Actions semantic lint",

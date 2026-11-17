@@ -10,9 +10,10 @@ It does **not** create Entra app registrations or any GitHub setting; the number
 infra/
   main.bicep                  Entry point (resource group scope); wires the modules together
   main.bicepparam             Parameter file; reads values from environment variables
+  public-demo.bicep           Optional separate public demo with explicit IPv4 allow rules
   cloud-init/runner.yaml      First-boot tool install for runner VMs (uses ../../samples/scripts/provision-vm-tools.sh)
   modules/
-    network.bicep             VNet, four subnets, NAT gateway, NSG
+    network.bicep             VNet, five subnets (including reserved demo subnet), NAT gateway, NSG
     registry.bicep            ACR Premium, private endpoint, private DNS zone, AcrPull role for the pull identity
     containerapp-env.bicep    Log Analytics and the internal Container Apps environment
     dns-aca.bicep             Private DNS zone named after the environment's default domain, with * and @ records
@@ -24,7 +25,7 @@ infra/
 
 | Resource | Details |
 |---|---|
-| Virtual network `vnet-<prefix>` | `10.60.0.0/16`: runners-build `/24`, runners-deploy `/27`, private-endpoints `/27`, aca `/26` (delegated to `Microsoft.App/environments`) |
+| Virtual network `vnet-<prefix>` | `10.60.0.0/16`: runners-build `/24`, runners-deploy `/27`, private-endpoints `/27`, aca `/26`, reserved aca-demo `/27` (ACA subnets delegated to `Microsoft.App/environments`) |
 | NAT gateway + public IP | Explicit outbound access for the runner and ACA subnets. Runner and private-endpoint subnets have default outbound access disabled |
 | Network security group | On the runner subnets, with no inbound rules (default rules deny inbound from the internet) |
 | Container Registry | Premium, **public network access disabled**, admin user disabled, data endpoint enabled, classic RBAC mode, private endpoint in the private-endpoints subnet |
@@ -104,6 +105,14 @@ Without the `.bicepparam` file, pass parameters directly, for example:
 Continue with the Entra, GitHub, and runner steps in [POC.md](../POC.md#5-set-up-the-poc).
 
 ## Notes and limits
+
+* **Optional browser demo.** [public-demo.bicep](public-demo.bicep) creates a separate external
+  Consumption environment and app, not a replacement for the internal environment. Use
+  [08-enable-browser-demo.sh](../scripts/08-enable-browser-demo.sh) to validate `/32` allow rules,
+  add the reserved subnet, preserve existing app images/traffic on reruns, grant app-scoped deploy
+  access, and enable the optional release step. It reuses the private registry, pull identity, NAT,
+  and Log Analytics workspace. The demo scales from zero to three replicas; cold starts are expected.
+  Additional environment/networking, compute, and logging charges can apply.
 
 * **Repository layout matters.** `runners.bicep` reads `../../../samples/scripts/provision-vm-tools.sh` at compile time, so keep `poc/` and `samples/` side by side as they are in the reference repository.
 * **Runner access.** The VMs have no public IP and there is no jump host or Bastion. The scripts use `az vmss run-command`. To add interactive access, deploy Azure Bastion in a dedicated `AzureBastionSubnet` (an extra subnet and cost).

@@ -92,6 +92,19 @@ resource vnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
           ]
         }
       }
+      {
+        name: 'snet-aca-demo'
+        properties: {
+          addressPrefix: '10.60.5.0/27'
+          natGateway: { id: nat.id }
+          delegations: [
+            {
+              name: 'aca-environments'
+              properties: { serviceName: 'Microsoft.App/environments' }
+            }
+          ]
+        }
+      }
     ]
   }
 }
@@ -101,4 +114,5 @@ output buildSubnetId string = '${vnet.id}/subnets/snet-runners-build'
 output deploySubnetId string = '${vnet.id}/subnets/snet-runners-deploy'
 output privateEndpointSubnetId string = '${vnet.id}/subnets/snet-private-endpoints'
 output acaSubnetId string = '${vnet.id}/subnets/snet-aca'
+output demoSubnetId string = '${vnet.id}/subnets/snet-aca-demo'
 output natPublicIp string = natIp.properties.ipAddress

@@ -5,7 +5,7 @@ import threading
 import unittest
 from unittest.mock import patch
 
-from server import Handler, ThreadingHTTPServer, response
+from server import Handler, ThreadingHTTPServer, response, welcome_page
 
 
 class ResponseTests(unittest.TestCase):
@@ -19,6 +19,12 @@ class ResponseTests(unittest.TestCase):
     def test_default_commit(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(response()["commit"], "local")
+
+    def test_welcome_page_escapes_commit(self):
+        with patch.dict(os.environ, {"APP_COMMIT": '<script>alert("test")</script>'}):
+            page = welcome_page()
+            self.assertNotIn("<script>", page)
+            self.assertIn("&lt;script&gt;", page)
 
 
 class HttpTests(unittest.TestCase):
@@ -44,9 +50,19 @@ class HttpTests(unittest.TestCase):
                         result = connection.getresponse()
                         body = result.read()
                         self.assertEqual(result.status, 200)
-                        self.assertEqual(result.getheader("Content-Type"), "application/json")
                         self.assertEqual(int(result.getheader("Content-Length")), len(body))
-                        self.assertEqual(json.loads(body), {"message": "Hello from ACA", "commit": "http-test"})
+                        self.assertEqual(result.getheader("Cache-Control"), "no-store")
+                        self.assertEqual(result.getheader("X-Content-Type-Options"), "nosniff")
+                        self.assertIn("frame-ancestors 'none'", result.getheader("Content-Security-Policy"))
+                        if path == "/health":
+                            self.assertEqual(result.getheader("Content-Type"), "application/json")
+                            self.assertEqual(json.loads(body), {"message": "Hello from ACA", "commit": "http-test"})
+                        else:
+                            self.assertEqual(result.getheader("Content-Type"), "text/html; charset=utf-8")
+                            self.assertIn(b"<!doctype html>", body)
+                            self.assertIn(b"Welcome aboard.", body)
+                            self.assertIn(b"<code>http-test</code>", body)
+                            self.assertIn(b'href="/health"', body)
                     finally:
                         connection.close()
 

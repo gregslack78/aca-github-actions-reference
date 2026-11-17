@@ -169,6 +169,16 @@ template_json = json.loads(compiled.stdout)
 assert any(r.get("type") == "Microsoft.Compute/virtualMachineScaleSets" for r in template_json["resources"]) or \
     "runners" in json.dumps(template_json)
 record("POC Bicep", "main.bicep and all modules compile with zero errors or analyzer warnings")
+demo_compiled = subprocess.run(
+    [az_cli, "bicep", "build", "--file", str(POC / "infra" / "public-demo.bicep"), "--stdout"],
+    capture_output=True, text=True,
+)
+assert demo_compiled.returncode == 0, demo_compiled.stderr
+assert not [line for line in demo_compiled.stderr.splitlines()
+            if re.search(r"\b(Warning|Error)\b", line) and "new Bicep release" not in line], demo_compiled.stderr
+demo_template = json.loads(demo_compiled.stdout)
+assert demo_template["resources"], "Public demo template must contain resources"
+record("Browser demo Bicep", "public-demo.bicep and its app module compile without analyzer warnings")
 cloud_init = (POC / "infra" / "cloud-init" / "runner.yaml").read_text(encoding="utf-8")
 rendered = yaml.safe_load(cloud_init.replace("@@PROVISION_B64@@", "QQ==").replace("@@MODE@@", "build"))
 assert rendered["write_files"][0]["encoding"] == "b64" and rendered["runcmd"]

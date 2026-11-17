@@ -3,6 +3,12 @@ name: Roll back to an existing revision
 on:
   workflow_dispatch:
     inputs:
+      target:
+        description: Application to roll back
+        required: true
+        default: private
+        type: choice
+        options: [private, demo]
       revision:
         description: Existing revision name from the approved release record
         required: true
@@ -40,6 +46,24 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+      - name: Select rollback target
+        env:
+          TARGET: ${{ inputs.target }}
+          DEMO_ENABLED: ${{ vars.DEMO_DEPLOYMENT_ENABLED }}
+          DEMO_APP: ${{ vars.DEMO_ACA_APP }}
+        run: |
+          set -euo pipefail
+          case "$TARGET" in
+            private) ;;
+            demo)
+              if [[ "$DEMO_ENABLED" != true || -z "$DEMO_APP" ]]; then
+                echo "::error::The browser demo is not enabled or configured"
+                exit 1
+              fi
+              printf 'ACA_APP=%s\n' "$DEMO_APP" >> "$GITHUB_ENV"
+              ;;
+            *) echo "::error::Select private or demo"; exit 1 ;;
+          esac
       - uses: azure/login@7184910d9eb2b1c5e48f7073824a90609bb9b6d6 # v2
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}

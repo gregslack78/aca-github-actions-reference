@@ -15,5 +15,5 @@ for attempt in $(seq 1 12); do
   echo "::warning::Health/commit verification attempt $attempt failed for $hostname"
   sleep 5
 done
-echo "::error::Private health endpoint did not serve the expected commit"
+echo "::error::Health endpoint did not serve the expected commit"
 exit 1

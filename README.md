@@ -2,6 +2,12 @@
 ## GitHub and Microsoft Entra setup guide
 
 **Audience:** platform and DevOps engineers. **Baseline:** November 2026; confirm details against current vendor docs.
+
+**Browser preview:** the sample now serves an HTML welcome page at `/`; `/health`
+retains its JSON health/commit contract. The private architecture remains the default.
+For a separate HTTPS demo restricted to explicit browser and runner IPs, see the
+[optional browser demo](poc/POC.md#t8-optional-browser-welcome-page).
+It reuses the private registry without making the registry or original app public.
 **Example workload:** hello-world HTTP app, 200 builds/day, bursts of 10-15 concurrent builds.
 
 This guide shows how to configure **GitHub, Microsoft Entra ID, and self-hosted runners** so a GitHub repository can build an image,
