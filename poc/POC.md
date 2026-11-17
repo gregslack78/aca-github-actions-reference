@@ -415,6 +415,45 @@ The guide targets 10 to 15 simultaneous builds. To try it, set `BUILD_INSTANCE_C
 `bash scripts/01-deploy-infra.sh` then `bash scripts/04-register-runners.sh`, and trigger several runs of `release.yml` with **Run workflow**.
 Measure the queue-to-start time and build duration. Deploy jobs are serialized by design: only the latest `main` commit reaches production.
 
+### T8. Optional browser welcome page
+
+The sample serves an HTML welcome page at `/` and the unchanged JSON health/commit
+contract at `/health`. For local preview, run `python samples/app/server.py` from the
+repository root and open `http://localhost:8080/`.
+
+The existing Azure environment is internal-only. Do not recreate it or enable public
+access on the private registry just to preview the app. Instead, the optional browser
+demo creates a separate environment and app in the same VNet using a reserved subnet,
+the existing private image registry, and its pull-only identity.
+
+1. In the browser you will use, visit `https://api.ipify.org` and note its IPv4 address.
+2. From Git Bash in `poc/`, preview and then provision:
+
+   ```bash
+   bash scripts/08-enable-browser-demo.sh YOUR_BROWSER_IPV4/32 --what-if
+   bash scripts/08-enable-browser-demo.sh YOUR_BROWSER_IPV4/32
+   ```
+
+3. Open the HTTPS URL printed by the script. Only the specified browser IP and the
+   runners' NAT IP are allowed. Other internet clients receive HTTP 403. This is an IP
+   allow list, not a user login: everyone sharing an allowed public IP can access the demo.
+4. The next approved release deploys the same digest to the private app first, then the
+   demo. Both use the existing production approval and shared deployment/rollback lock.
+   A demo deployment failure does not undo a successful private deployment; review each
+   application's revision and traffic state in the release summary.
+5. To roll back the demo, select `target=demo` in the rollback workflow and supply a
+   revision belonging to that demo app. The default target remains `private`.
+6. If your IP changes, rerun step 2 with the new `/32`. Existing demo image and traffic
+   are preserved; the two allow rules are updated. The script refuses unexpected access-rule drift.
+
+The setup sets repository variables `DEMO_ACA_APP`, `DEMO_APP_FQDN`, and
+`DEMO_DEPLOYMENT_ENABLED=true`; no secrets are added. The optional hosted CI job checks
+that an unapproved internet client is denied. Set `DEMO_DEPLOYMENT_ENABLED=false` to
+stop updating/testing the demo; that flag does **not** disable its endpoint or remove
+resources. Delete the demo resources separately or use full POC teardown when finished.
+The demo scales to zero, so the first browser request after inactivity may take longer.
+Extra Consumption environment, networking, compute, and logging charges can apply.
+
 ## 7. Evidence checklist
 
 Use this as the sign-off record for the customer.

@@ -31,6 +31,16 @@ case "$*" in
     if [[ "$*" == *"--query properties.healthState"* ]]; then echo Healthy
     else echo '{"properties":{"healthState":"Healthy","fqdn":"candidate.example"}}'; fi ;;
   "containerapp revision activate"*|"containerapp update"*) ;;
+  "network public-ip show"*) echo 198.51.100.10 ;;
+  "network vnet subnet list"*) [[ "${MOCK_APP_EXISTS:-false}" != true ]] || echo demo-subnet ;;
+  "containerapp show"*"--query properties.template.containers[0].image"*) echo "$IMAGE" ;;
+  "containerapp show"*"--query properties.configuration.ingress.fqdn"*) echo demo.example ;;
+  "containerapp show"*"--query properties.managedEnvironmentId"*)
+    echo "${MOCK_MANAGED_ENV:-/subscriptions/subscription/resourceGroups/group/providers/Microsoft.App/managedEnvironments/cae-test-demo}" ;;
+  "containerapp ingress access-restriction list"*)
+    if [[ -n "${MOCK_DEMO_RULES:-}" ]]; then printf '%s\n' "$MOCK_DEMO_RULES"
+    else echo '[{"name":"allowed-0","action":"Allow"},{"name":"allowed-1","action":"Allow"}]'; fi ;;
+  "containerapp ingress access-restriction set"*) ;;
   "containerapp show"*) echo '{"properties":{"configuration":{"activeRevisionsMode":"Multiple","ingress":{"fqdn":"stable.example","traffic":[{"revisionName":"hello--old","weight":100}]}}}}' ;;
   "containerapp ingress traffic set"*) ;;
   "bicep version"*) echo bicep ;;
@@ -46,7 +56,8 @@ case "$*" in
   "ad app federated-credential list"*) printf '%s\n' "${MOCK_FEDERATION:-null}" ;;
   "ad app federated-credential create"*) ;;
   "acr show"*) echo registry ;;
-  "role assignment list"*) echo 1 ;;
+  "role assignment list"*) echo "${MOCK_ROLE_COUNT:-1}" ;;
+  "role assignment create"*) ;;
   "retry-probe"*)
     if [[ ! -f "$RETRY_MARKER" ]]; then
       touch "$RETRY_MARKER"; echo partial-output; echo ConnectionReset >&2; exit 1
@@ -141,6 +152,65 @@ class AutomationTests(unittest.TestCase):
         self.assertIn("deployApp=false", self.read_calls())
         self.assertNotIn("containerapp ingress traffic set", self.read_calls())
         self.assertNotIn("containerapp revision show", self.read_calls())
+
+    def test_demo_rejects_broad_or_invalid_browser_rules_before_azure_calls(self):
+        for cidr in ("0.0.0.0/0", "203.0.113.0/24", "999.1.1.1/32", "1.02.3.4/32", "not-an-ip"):
+            with self.subTest(cidr=cidr):
+                result = self.run_script("poc/scripts/08-enable-browser-demo.sh", cidr)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(self.read_calls(), "")
+
+    def test_demo_what_if_does_not_change_azure_or_github(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "203.0.113.7/32",
+                                 "--what-if", DEPLOY_CLIENT_ID="deploy-client")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.read_calls()
+        self.assertEqual(calls.count("deployment group what-if"), 1)
+        self.assertNotIn("deployment group create", calls)
+        self.assertNotIn("containerapp ingress traffic set", calls)
+        self.assertNotIn("role assignment create", calls)
+        parameters = json.loads((self.root / "poc" / ".state" / "demo.parameters.json").read_text())
+        self.assertEqual(parameters["browserCidr"]["value"], "203.0.113.7/32")
+        self.assertEqual(parameters["runnerCidr"]["value"], "198.51.100.10/32")
+        self.assertEqual(parameters["appName"]["value"], "hello-demo")
+
+    def test_demo_setup_only_pins_demo_and_scopes_deploy_access_to_demo(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "203.0.113.7/32",
+                                 DEPLOY_CLIENT_ID="deploy-client", MOCK_ROLE_COUNT="0")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.read_calls()
+        self.assertIn("--revision-weight hello-demo--bootstrap=100", calls)
+        self.assertNotIn("--revision-weight hello--", calls)
+        self.assertIn("--scope /subscriptions/subscription/resourceGroups/group/providers/Microsoft.App/containerApps/hello-demo", calls)
+        self.assertIn("role assignment create --assignee-object-id principal", calls)
+
+    def test_existing_demo_keeps_image_and_traffic_when_updating_ip(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "203.0.113.8/32",
+                                 DEPLOY_CLIENT_ID="deploy-client", MOCK_APP_EXISTS="true")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.read_calls()
+        self.assertNotIn("containerapp ingress traffic set", calls)
+        self.assertNotIn("containerapp update", calls)
+        self.assertIn("--rule-name allowed-0 --ip-address 203.0.113.8/32 --action Allow", calls)
+        parameters = json.loads((self.root / "poc" / ".state" / "demo.parameters.json").read_text())
+        self.assertFalse(parameters["deployApp"]["value"])
+        self.assertFalse(parameters["deploySubnet"]["value"])
+
+    def test_demo_setup_rejects_an_existing_app_in_another_environment(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "203.0.113.7/32",
+                                 DEPLOY_CLIENT_ID="deploy-client", MOCK_APP_EXISTS="true",
+                                 MOCK_MANAGED_ENV="private-environment")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("refusing to modify", result.stderr)
+        self.assertNotIn("deployment group create", self.read_calls())
+
+    def test_demo_setup_rejects_unexpected_existing_access_rules(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "203.0.113.7/32",
+                                 DEPLOY_CLIENT_ID="deploy-client", MOCK_APP_EXISTS="true",
+                                 MOCK_DEMO_RULES='[{"name":"allow-all","action":"Allow"}]')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unexpected demo access rules", result.stderr)
+        self.assertNotIn("deployment group create", self.read_calls())
 
     def test_new_app_is_bootstrapped(self):
         result = self.run_script("poc/scripts/01-deploy-infra.sh")

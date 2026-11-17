@@ -126,6 +126,11 @@ jobs:
       - name: Stage, smoke test and promote
         shell: bash
         run: bash scripts/deploy.sh
+      - name: Deploy optional browser demo
+        if: vars.DEMO_DEPLOYMENT_ENABLED == 'true'
+        env:
+          ACA_APP: ${{ vars.DEMO_ACA_APP }}
+        run: bash scripts/deploy.sh
       - name: Remove per-job credentials
         if: always() && env.AZURE_CONFIG_DIR != ''
         run: rm -rf -- "$AZURE_CONFIG_DIR"

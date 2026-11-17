@@ -43,10 +43,40 @@ class WorkflowTests(unittest.TestCase):
     def test_artifact_path_is_relative_to_checkout_not_run_directory(self):
         self.assertIn("path: samples/release.json", renderer.render("release.yml"))
 
+    def test_demo_release_is_opt_in_and_reuses_the_existing_build(self):
+        text = renderer.render("release.yml")
+        self.assertIn("if: vars.DEMO_DEPLOYMENT_ENABLED == 'true'", text)
+        self.assertIn("ACA_APP: ${{ vars.DEMO_ACA_APP }}", text)
+        self.assertLess(text.index("name: Stage, smoke test and promote"),
+                        text.index("name: Deploy optional browser demo"))
+        self.assertEqual(text.count("docker build --build-arg"), 1)
+
+    def test_demo_rollback_never_silently_falls_back_to_private_app(self):
+        text = renderer.render("rollback.yml")
+        self.assertIn("default: private", text)
+        block = next(block for block in re.split(r"^      - ", text, flags=re.MULTILINE)
+                     if block.startswith("name: Select rollback target\n"))
+        run = textwrap.dedent(re.search(
+            r"^        run: \|\n((?:          [^\n]*\n)+)", block, re.MULTILINE).group(1))
+        cases = (("private", "", "", 0), ("demo", "true", "hello-demo", 0),
+                 ("demo", "", "hello-demo", 1), ("demo", "true", "", 1), ("invalid", "", "", 1))
+        for target, enabled, app, code in cases:
+            with self.subTest(target=target, enabled=enabled, app=app), tempfile.TemporaryDirectory() as temporary:
+                env_file = Path(temporary) / "github-env"
+                env = {**os.environ, "TARGET": target, "DEMO_ENABLED": enabled, "DEMO_APP": app,
+                       "GITHUB_ENV": env_file.as_posix()}
+                result = subprocess.run([BASH, "-s"], input=run, text=True, env=env,
+                                        capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, code, result.stderr)
+                if code == 0 and target == "demo":
+                    self.assertEqual(env_file.read_text(), "ACA_APP=hello-demo\n")
+                else:
+                    self.assertFalse(env_file.exists())
+
     def test_portable_templates_are_not_gated_or_relocated(self):
         sample = renderer.PACKAGE / "samples" / ".github" / "workflows" / "release.yml"
         text = sample.read_text(encoding="utf-8")
-        self.assertNotIn("DEPLOYMENT_ENABLED", text)
+        self.assertNotIn("vars.DEPLOYMENT_ENABLED", text)
         self.assertNotIn("working-directory: samples", text)
         self.assertIn("path: release.json", text)
 
