@@ -26,6 +26,11 @@ def render(name):
             "      - name: Test hello world",
         )
     else:
+        for step in ("Isolate per-job credentials", "Remove per-job credentials"):
+            text = text.replace(
+                f"      - name: {step}\n",
+                f"      - name: {step}\n        working-directory: ${{{{ runner.temp }}}}\n",
+            )
         text = text.replace(
             "if: github.ref == 'refs/heads/main'",
             "if: github.ref == 'refs/heads/main' && vars.DEPLOYMENT_ENABLED == 'true'",

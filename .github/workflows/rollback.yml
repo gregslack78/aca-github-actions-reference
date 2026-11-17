@@ -32,6 +32,7 @@ jobs:
       REVISION: ${{ inputs.revision }}
     steps:
       - name: Isolate per-job credentials
+        working-directory: ${{ runner.temp }}
         shell: bash
         run: |
           set -euo pipefail
@@ -47,5 +48,6 @@ jobs:
       - name: Restore selected revision
         run: bash scripts/rollback.sh
       - name: Remove per-job credentials
+        working-directory: ${{ runner.temp }}
         if: always() && env.AZURE_CONFIG_DIR != ''
         run: rm -rf -- "$AZURE_CONFIG_DIR"
