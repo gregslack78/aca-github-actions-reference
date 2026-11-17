@@ -81,7 +81,10 @@ class AutomationTests(unittest.TestCase):
         self.write_mock("az", AZ_MOCK)
         self.write_mock("sleep", "#!/usr/bin/env bash\nexit 0\n")
         self.write_mock("curl", '#!/usr/bin/env bash\necho \'{"message":"Hello from ACA","commit":"abc123"}\'\n')
-        self.write_mock("gh", '#!/usr/bin/env bash\ncase "$*" in\n  "auth status"*) ;;\n  *) echo owner ;;\nesac\n')
+        self.write_mock("gh", '#!/usr/bin/env bash\ncase "$*" in\n'
+                        '  "auth status"*) ;;\n'
+                        '  *actions/oidc/customization/sub) printf \'%s\\n\' "$MOCK_OIDC_POLICY" ;;\n'
+                        '  *) echo owner ;;\nesac\n')
         self.config = {
             "SUBSCRIPTION_ID": "subscription", "LOCATION": "eastus2", "RESOURCE_GROUP": "group",
             "POC_PREFIX": "test", "SSH_PUBLIC_KEY_FILE": (self.root / "key.pub").as_posix(),
@@ -106,6 +109,8 @@ class AutomationTests(unittest.TestCase):
                                    "capabilities": [{"name": "vCPUs", "value": "4"}]}),
             "MOCK_USAGE": json.dumps([{"name": {"value": name}, "limit": 16, "currentValue": 0}
                                      for name in ("testFamily", "cores")]),
+            "MOCK_OIDC_POLICY": json.dumps({"use_default": True, "use_immutable_subject": True,
+                                           "sub_claim_prefix": "repo:owner@123/reference@456"}),
         }
 
     def save_config(self):
@@ -218,6 +223,28 @@ class AutomationTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("trusts different claims", result.stderr)
         self.assertNotIn("federated-credential create", self.read_calls())
+
+    def test_federation_uses_github_reported_subject_prefix(self):
+        for prefix in ("repo:owner@123/reference@456", "repo:owner/reference"):
+            with self.subTest(prefix=prefix):
+                (self.root / "poc" / ".state" / "outputs.env").unlink(missing_ok=True)
+                result = self.run_script("poc/scripts/02-entra-and-roles.sh",
+                                         MOCK_OIDC_POLICY=json.dumps(
+                                             {"use_default": True, "sub_claim_prefix": prefix}))
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                for name, environment in (("github-build", "build"), ("github-production", "production")):
+                    path = self.root / "poc" / ".state" / (name + ".json")
+                    credential = json.loads(path.read_text(encoding="utf-8"))
+                    self.assertEqual(credential["subject"], prefix + ":environment:" + environment)
+
+    def test_missing_or_custom_oidc_policy_is_not_guessed(self):
+        for policy in ({}, {"use_default": False, "sub_claim_prefix": "repo:owner/reference"}):
+            with self.subTest(policy=policy):
+                result = self.run_script("poc/scripts/02-entra-and-roles.sh",
+                                         MOCK_OIDC_POLICY=json.dumps(policy))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Cannot determine the default OIDC subject prefix", result.stderr)
+                self.assertNotIn("ad app create", self.read_calls())
 
     def test_teardown_requires_recorded_identity_ids(self):
         result = self.run_script("poc/scripts/99-teardown.sh", "--yes")

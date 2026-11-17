@@ -5,6 +5,11 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 require SUBSCRIPTION_ID RESOURCE_GROUP GH_OWNER GH_REPO BUILD_APP_NAME DEPLOY_APP_NAME ACA_APP ACR_NAME TENANT_ID
 
+oidc_policy=$(gh api "repos/$GH_OWNER/$GH_REPO/actions/oidc/customization/sub")
+subject_prefix=$(jq -er 'select(.use_default == true) | .sub_claim_prefix | select(type == "string" and length > 0)' \
+  <<< "$oidc_policy") ||
+  die "Cannot determine the default OIDC subject prefix. Check repository access and OIDC customization; custom subjects require the guide's manual setup."
+
 az account set --subscription "$SUBSCRIPTION_ID"
 ACR_ID=$(az acr show --name "$ACR_NAME" --query id -o tsv)
 ACA_ID=$(az containerapp show --name "$ACA_APP" --resource-group "$RESOURCE_GROUP" --query id -o tsv)
@@ -32,7 +37,7 @@ ensure_app() {
 # ensure_federation CLIENT_ID CREDENTIAL_NAME ENVIRONMENT: trust one exact GitHub subject.
 ensure_federation() {
   local client_id=$1 name=$2 environment=$3 existing subject
-  subject="repo:$GH_OWNER/$GH_REPO:environment:$environment"
+  subject="$subject_prefix:environment:$environment"
   existing=$(az ad app federated-credential list --id "$client_id" --query "[?name=='$name'] | [0]" -o json)
   if [[ "$existing" != null ]]; then
     jq -e --arg subject "$subject" \
@@ -46,12 +51,12 @@ ensure_federation() {
 {
   "name": "$name",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:$GH_OWNER/$GH_REPO:environment:$environment",
+  "subject": "$subject",
   "audiences": ["api://AzureADTokenExchange"]
 }
 EOF
   (cd "$STATE_DIR" && az ad app federated-credential create --id "$client_id" --parameters "@$name.json" --output none)
-  echo "  created federated credential $name -> repo:$GH_OWNER/$GH_REPO:environment:$environment"
+  echo "  created federated credential $name -> $subject"
 }
 
 # ensure_role CLIENT_ID ROLE SCOPE
