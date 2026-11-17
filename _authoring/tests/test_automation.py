@@ -41,6 +41,7 @@ case "$*" in
     if [[ -n "${MOCK_DEMO_RULES:-}" ]]; then printf '%s\n' "$MOCK_DEMO_RULES"
     else echo '[{"name":"allowed-0","action":"Allow"},{"name":"allowed-1","action":"Allow"}]'; fi ;;
   "containerapp ingress access-restriction set"*) ;;
+  "containerapp ingress access-restriction remove"*) ;;
   "containerapp show"*) echo '{"properties":{"configuration":{"activeRevisionsMode":"Multiple","ingress":{"fqdn":"stable.example","traffic":[{"revisionName":"hello--old","weight":100}]}}}}' ;;
   "containerapp ingress traffic set"*) ;;
   "bicep version"*) echo bicep ;;
@@ -173,6 +174,34 @@ class AutomationTests(unittest.TestCase):
         self.assertEqual(parameters["browserCidr"]["value"], "203.0.113.7/32")
         self.assertEqual(parameters["runnerCidr"]["value"], "198.51.100.10/32")
         self.assertEqual(parameters["appName"]["value"], "hello-demo")
+        self.assertFalse(parameters["publicAccess"]["value"])
+
+    def test_public_demo_requires_explicit_flag(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "--public", "--what-if",
+                                 DEPLOY_CLIENT_ID="deploy-client")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        parameters = json.loads((self.root / "poc" / ".state" / "demo.parameters.json").read_text())
+        self.assertTrue(parameters["publicAccess"]["value"])
+        self.assertNotIn("access-restriction remove", self.read_calls())
+
+    def test_public_demo_removes_only_known_demo_rules_and_preserves_traffic(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "--public",
+                                 DEPLOY_CLIENT_ID="deploy-client", MOCK_APP_EXISTS="true")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        calls = self.read_calls()
+        self.assertEqual(calls.count("containerapp ingress access-restriction remove"), 2)
+        self.assertIn("--name hello-demo --rule-name allowed-0", calls)
+        self.assertIn("--name hello-demo --rule-name allowed-1", calls)
+        self.assertNotIn("containerapp ingress traffic set", calls)
+        self.assertNotIn("containerapp update", calls)
+
+    def test_public_demo_rerun_with_no_rules_preserves_public_mode(self):
+        result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "--public",
+                                 DEPLOY_CLIENT_ID="deploy-client", MOCK_APP_EXISTS="true",
+                                 MOCK_DEMO_RULES="[]")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("access-restriction remove", self.read_calls())
+        self.assertNotIn("access-restriction set", self.read_calls())
 
     def test_demo_setup_only_pins_demo_and_scopes_deploy_access_to_demo(self):
         result = self.run_script("poc/scripts/08-enable-browser-demo.sh", "203.0.113.7/32",

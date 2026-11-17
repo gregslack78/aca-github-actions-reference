@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-# Add the optional public demo without redeploying the private application or runners.
+# Add the optional browser demo without redeploying the private application or runners.
 set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 [[ $# -ge 1 && $# -le 2 && ( $# -eq 1 || "$2" == "--what-if" ) ]] ||
-  die "Usage: $0 <browser-ipv4/32> [--what-if]"
+  die "Usage: $0 <browser-ipv4/32|--public> [--what-if]"
 browser_cidr=$1
+public_access=false
 validate_host_cidr() {
   local cidr=$1 octet
   local -a octets
@@ -16,7 +17,12 @@ validate_host_cidr() {
       die "Invalid IPv4 address: $cidr"
   done
 }
-validate_host_cidr "$browser_cidr"
+if [[ "$browser_cidr" == "--public" ]]; then
+  public_access=true
+  browser_cidr="0.0.0.0/0"
+else
+  validate_host_cidr "$browser_cidr"
+fi
 require SUBSCRIPTION_ID LOCATION RESOURCE_GROUP POC_PREFIX ACA_APP ACR_LOGIN_SERVER \
   DEPLOY_CLIENT_ID GH_OWNER GH_REPO
 DEMO_ACA_APP=${DEMO_ACA_APP:-"$ACA_APP-demo"}
@@ -46,18 +52,19 @@ if [[ -n "$existing" ]]; then
   [[ "${actual_environment,,}" == "${expected_environment,,}" ]] ||
     die "Existing demo app belongs to another environment; refusing to modify it"
   rules=$(az containerapp ingress access-restriction list --resource-group "$RESOURCE_GROUP" --name "$DEMO_ACA_APP")
-  jq -e 'length == 2 and all(.[]; .action == "Allow" and
-    (.name == "allowed-0" or .name == "allowed-1"))' <<< "$rules" >/dev/null ||
+  jq -e 'length == 0 or (length == 2 and all(.[]; .action == "Allow" and
+    (.name == "allowed-0" or .name == "allowed-1")))' <<< "$rules" >/dev/null ||
     die "Unexpected demo access rules; review them manually before changing the allow list"
 fi
 
 jq -n --arg location "$LOCATION" --arg prefix "$POC_PREFIX" --arg app "$DEMO_ACA_APP" \
   --arg image "$image" --arg registry "$ACR_LOGIN_SERVER" --arg browser "$browser_cidr" \
   --arg runner "$runner_ip/32" --argjson create "$deploy_app" --argjson subnet "$deploy_subnet" \
+  --argjson public "$public_access" \
   '{location:{value:$location},prefix:{value:$prefix},appName:{value:$app},
     image:{value:$image},registryLoginServer:{value:$registry},browserCidr:{value:$browser},
     runnerCidr:{value:$runner},deployApp:{value:$create},
-    deploySubnet:{value:$subnet}}' > .state/demo.parameters.json
+    deploySubnet:{value:$subnet},publicAccess:{value:$public}}' > .state/demo.parameters.json
 
 if [[ "${2:-}" == "--what-if" ]]; then
   log "Preview the dedicated subnet and separate demo; no Azure or GitHub changes"
@@ -66,7 +73,7 @@ if [[ "${2:-}" == "--what-if" ]]; then
   exit 0
 fi
 
-log "Provision only the new subnet, separate environment and IP-restricted Consumption demo"
+log "Provision only the new subnet, separate environment and Consumption demo"
 az deployment group create --resource-group "$RESOURCE_GROUP" --name browser-demo \
   --template-file infra/public-demo.bicep --parameters @.state/demo.parameters.json --output none
 
@@ -74,11 +81,18 @@ if [[ "$deploy_app" == true ]]; then
   az containerapp ingress traffic set --resource-group "$RESOURCE_GROUP" --name "$DEMO_ACA_APP" \
     --revision-weight "$DEMO_ACA_APP--bootstrap=100" --output none
 else
-  log "Preserve the existing demo image and traffic; update only its two access rules"
-  for entry in "allowed-0=$browser_cidr" "allowed-1=$runner_ip/32"; do
-    az containerapp ingress access-restriction set --resource-group "$RESOURCE_GROUP" --name "$DEMO_ACA_APP" \
-      --rule-name "${entry%%=*}" --ip-address "${entry#*=}" --action Allow --output none
-  done
+  log "Preserve the existing demo image and traffic; update only its access rules"
+  if [[ "$public_access" == true ]]; then
+    while IFS= read -r rule; do
+      az containerapp ingress access-restriction remove --resource-group "$RESOURCE_GROUP" --name "$DEMO_ACA_APP" \
+        --rule-name "$rule" --output none
+    done < <(jq -r '.[].name' <<< "$rules")
+  else
+    for entry in "allowed-0=$browser_cidr" "allowed-1=$runner_ip/32"; do
+      az containerapp ingress access-restriction set --resource-group "$RESOURCE_GROUP" --name "$DEMO_ACA_APP" \
+        --rule-name "${entry%%=*}" --ip-address "${entry#*=}" --action Allow --output none
+    done
+  fi
 fi
 app_id="/subscriptions/$SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.App/containerApps/$DEMO_ACA_APP"
 assignments=$(az role assignment list --assignee "$DEPLOY_CLIENT_ID" --scope "$app_id" \
@@ -93,8 +107,14 @@ fqdn=$(az containerapp show --resource-group "$RESOURCE_GROUP" --name "$DEMO_ACA
 save_state DEMO_ACA_APP "$DEMO_ACA_APP"
 save_state DEMO_APP_FQDN "$fqdn"
 save_state DEMO_ALLOWED_CIDR "$browser_cidr"
+save_state DEMO_PUBLIC_ACCESS "$public_access"
 gh variable set DEMO_ACA_APP --repo "$GH_OWNER/$GH_REPO" --body "$DEMO_ACA_APP"
 gh variable set DEMO_APP_FQDN --repo "$GH_OWNER/$GH_REPO" --body "$fqdn"
+gh variable set DEMO_PUBLIC_ACCESS --repo "$GH_OWNER/$GH_REPO" --body "$public_access"
 gh variable set DEMO_DEPLOYMENT_ENABLED --repo "$GH_OWNER/$GH_REPO" --body true
-log "Demo: https://$fqdn (browser $browser_cidr; runner $runner_ip/32)"
+if [[ "$public_access" == true ]]; then
+  log "Demo: https://$fqdn (PUBLIC HTTPS: no login or IP restrictions; hello-world content only)"
+else
+  log "Demo: https://$fqdn (browser $browser_cidr; runner $runner_ip/32)"
+fi
 log "The next approved release updates both apps. The registry and original app remain private."
