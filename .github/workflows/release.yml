@@ -30,6 +30,7 @@ jobs:
       image: ${{ steps.image.outputs.image }}
     steps:
       - name: Isolate per-job credentials
+        working-directory: ${{ runner.temp }}
         shell: bash
         run: |
           set -euo pipefail
@@ -81,6 +82,7 @@ jobs:
           retention-days: 30
           if-no-files-found: error
       - name: Remove per-job credentials
+        working-directory: ${{ runner.temp }}
         if: always() && env.AZURE_CONFIG_DIR != ''
         shell: bash
         run: |
@@ -105,6 +107,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Isolate per-job credentials
+        working-directory: ${{ runner.temp }}
         shell: bash
         run: |
           set -euo pipefail
@@ -132,5 +135,6 @@ jobs:
         shell: bash
         run: bash scripts/deploy.sh
       - name: Remove per-job credentials
+        working-directory: ${{ runner.temp }}
         if: always() && env.AZURE_CONFIG_DIR != ''
         run: rm -rf -- "$AZURE_CONFIG_DIR"

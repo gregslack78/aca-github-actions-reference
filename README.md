@@ -21,6 +21,9 @@ without storing any Azure password in GitHub.
 > the repository variable `DEPLOYMENT_ENABLED` is exactly `true`. Follow [POC.md](poc/POC.md#5-set-up-the-poc):
 > configure identities, the approval gate and runners before enabling it. Initial pushes run hosted CI only.
 
+Credential setup and cleanup run in the runner's temporary directory, independently of checkout. Application commands
+run in `samples/` only after checkout has created that directory, including on a fresh self-hosted runner.
+
 ## Contents
 
 1. [How it fits together](#1-how-it-fits-together)
