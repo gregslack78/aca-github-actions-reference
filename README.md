@@ -5,7 +5,8 @@
 
 **Browser preview:** the sample now serves an HTML welcome page at `/`; `/health`
 retains its JSON health/commit contract. The private architecture remains the default.
-For a separate HTTPS demo restricted to explicit browser and runner IPs, see the
+For a separate HTTPS demo restricted to explicit browser and runner IPs, or an explicitly
+public hello-world demo, see the
 [optional browser demo](poc/POC.md#t8-optional-browser-welcome-page).
 It reuses the private registry without making the registry or original app public.
 **Example workload:** hello-world HTTP app, 200 builds/day, bursts of 10-15 concurrent builds.

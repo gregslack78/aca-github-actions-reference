@@ -73,6 +73,22 @@ class WorkflowTests(unittest.TestCase):
                 else:
                     self.assertFalse(env_file.exists())
 
+    def test_internet_check_matches_the_explicit_demo_access_mode(self):
+        text = renderer.render("ci.yml")
+        block = next(block for block in re.split(r"^      - ", text, flags=re.MULTILINE)
+                     if block.startswith("name: Verify configured demo internet access\n"))
+        run = textwrap.dedent(re.search(
+            r"^        run: \|\n((?:          [^\n]*\n)+)", block, re.MULTILINE).group(1))
+        for public, status, code in (("true", "200", 0), ("false", "403", 0),
+                                     ("false", "200", 1), ("true", "403", 1)):
+            with self.subTest(public=public, status=status):
+                environment = {**os.environ, "DEMO_PUBLIC_ACCESS": public, "MOCK_STATUS": status,
+                               "DEMO_FQDN": "demo.region.azurecontainerapps.io"}
+                result = subprocess.run([BASH, "-s"],
+                                        input='curl() { printf "%s" "$MOCK_STATUS"; }\n' + run,
+                                        text=True, env=environment, capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, code, result.stderr)
+
     def test_portable_templates_are_not_gated_or_relocated(self):
         sample = renderer.PACKAGE / "samples" / ".github" / "workflows" / "release.yml"
         text = sample.read_text(encoding="utf-8")

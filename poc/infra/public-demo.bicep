@@ -9,6 +9,8 @@ param browserCidr string
 param runnerCidr string
 param deployApp bool = true
 param deploySubnet bool = true
+@description('Explicit opt-in to a publicly viewable hello-world demo without IP restrictions.')
+param publicAccess bool = false
 
 var tags = {
   purpose: 'github-actions-to-aca-poc'
@@ -90,7 +92,7 @@ module app 'modules/containerapp.bicep' = if (deployApp) {
     pullIdentityId: pullIdentity.id
     registryLoginServer: registryLoginServer
     bootstrapImage: image
-    allowedCidrs: [browserCidr, runnerCidr]
+    allowedCidrs: publicAccess ? [] : [browserCidr, runnerCidr]
     minReplicas: 0
   }
 }

@@ -446,9 +446,24 @@ the existing private image registry, and its pull-only identity.
 6. If your IP changes, rerun step 2 with the new `/32`. Existing demo image and traffic
    are preserved; the two allow rules are updated. The script refuses unexpected access-rule drift.
 
+For a non-sensitive hello-world demo that should be viewable by anyone, explicitly
+opt in to public HTTPS instead:
+
+```bash
+bash scripts/08-enable-browser-demo.sh --public --what-if
+bash scripts/08-enable-browser-demo.sh --public
+```
+
+This removes only the demo's known IP allow rules, keeps HTTPS, and does not change
+the private app or registry. There is **no user authentication** in public mode.
+Do not publish confidential content. Return to restricted mode by rerunning with an
+explicit browser `/32`. Setup records `DEMO_PUBLIC_ACCESS=true` or `false`; hosted CI
+expects HTTP 200 in explicit public mode and HTTP 403 from outside the allow list
+otherwise. Some corporate networks use destination-dependent egress, so an IP-check
+website may not report the source address Azure sees.
+
 The setup sets repository variables `DEMO_ACA_APP`, `DEMO_APP_FQDN`, and
-`DEMO_DEPLOYMENT_ENABLED=true`; no secrets are added. The optional hosted CI job checks
-that an unapproved internet client is denied. Set `DEMO_DEPLOYMENT_ENABLED=false` to
+`DEMO_DEPLOYMENT_ENABLED=true`; no secrets are added. Set `DEMO_DEPLOYMENT_ENABLED=false` to
 stop updating/testing the demo; that flag does **not** disable its endpoint or remove
 resources. Delete the demo resources separately or use full POC teardown when finished.
 The demo scales to zero, so the first browser request after inactivity may take longer.
