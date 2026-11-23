@@ -3,6 +3,8 @@
 
 **Audience:** platform and DevOps engineers. **Baseline:** November 2026; confirm details against current vendor docs.
 
+**Customer presentation:** [walkthrough.MD](walkthrough.MD) provides a quick branch-to-browser demo and a detailed, source-linked explanation of the build, approval, and deployment flow.
+
 **Browser preview:** the sample now serves an HTML welcome page at `/`; `/health`
 retains its JSON health/commit contract. The private architecture remains the default.
 For a separate HTTPS demo restricted to explicit browser and runner IPs, or an explicitly
