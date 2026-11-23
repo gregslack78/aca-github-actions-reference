@@ -41,6 +41,7 @@ def welcome_page():
     <p>Make a small change, open a pull request, and watch your next release arrive here.</p>
     <p>Look at my small change here.</p>
     <p>And another small change.</p>
+    <p>And another small change. asdfasdfasdfasdfasdfasdfasdfasdfasdf</p>
     <p><strong>Release commit</strong></p>
     <code>{commit}</code>
     <footer><a href="/health">View application health</a></footer>
